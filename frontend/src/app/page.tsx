@@ -15,7 +15,11 @@ interface Message {
   timestamp: Date;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+// Ensure protocol prefix and strip trailing slash
+const API_URL = (
+  RAW_API_URL.startsWith("http") ? RAW_API_URL : `https://${RAW_API_URL}`
+).replace(/\/+$/, "");
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
