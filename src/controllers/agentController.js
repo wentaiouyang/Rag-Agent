@@ -13,7 +13,7 @@ async function chatWithAgent(req, res) {
     console.log(`\nUser question: "${prompt}"`);
 
     const result = await generateText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-2.0-flash'),
       system: `You are a professional full-stack developer assistant.
                Directives:
                1. You MUST use the searchCompanyDocs tool for any questions regarding project architecture, auth, or deployment.
@@ -35,7 +35,7 @@ async function chatWithAgent(req, res) {
           },
         }),
       },
-      maxSteps: 5,
+      maxSteps: 3,
     });
 
     // ROBUST EXTRACTION: Iterate through steps to find the actual content
@@ -62,7 +62,7 @@ async function chatWithAgent(req, res) {
       if (rawToolOutput) {
         console.log('Calling the language model to polish the raw segments...');
         const summaryResult = await generateText({
-          model: google('gemini-2.5-flash'),
+          model: google('gemini-2.0-flash'),
           system:
             "You are a professional R&D assistant. Based on the provided <Context>, answer the user's question in a professional and concise manner. At the end of your answer, be sure to indicate [source file] used as reference.",
           prompt: `User Question: ${prompt}\n\n<Context>\n${rawToolOutput}\n</Context>`,
