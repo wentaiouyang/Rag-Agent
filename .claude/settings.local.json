@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/abiinteriors/Documents/WorkSpace/express-ai-agent -type f -name *.js -path */routes/* -o -name *routes*)",
+      "mcp__paper__delete_nodes",
+      "mcp__paper__create_artboard",
+      "mcp__paper__write_html",
+      "mcp__paper__get_screenshot",
+      "mcp__paper__finish_working_on_nodes",
+      "Bash(source /tmp/pw_venv/bin/activate)",
+      "Bash(python /tmp/screenshot_chat.py)",
+      "Bash(python /tmp/screenshot_final.py)",
+      "Bash(python /tmp/screenshot_conv.py)",
+      "Bash(python /tmp/screenshot_send.py)",
+      "Bash(python /tmp/screenshot_verify.py)"
+    ]
+  }
+}
