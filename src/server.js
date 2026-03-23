@@ -5,9 +5,13 @@ const cors = require('cors');
 const { chatWithAgent } = require('./controllers/agentController');
 const documentsRouter = require('./routes/documents');
 
-// Ensure required directories exist
-fs.mkdirSync('uploads', { recursive: true });
-fs.mkdirSync('data', { recursive: true });
+// Ensure required directories exist (skip on serverless where /tmp is the only writable path)
+try {
+  fs.mkdirSync('uploads', { recursive: true });
+  fs.mkdirSync('data', { recursive: true });
+} catch (_err) {
+  // Vercel serverless: directories may not be writable
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -16,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', message: 'AI Agent Server is running!' });
 });
 
@@ -26,15 +30,20 @@ app.post('/api/chat', chatWithAgent);
 // Document management endpoints
 app.use('/api/documents', documentsRouter);
 
-// Start the server
-const server = app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+// Export for Vercel serverless
+module.exports = app;
 
-server.on('error', (err) => {
-  console.error('Server failed to start:', err);
-});
+// Start the server when running locally (not on Vercel)
+if (!process.env.VERCEL) {
+  const server = app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
 
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception occurred:', err);
-});
+  server.on('error', (err) => {
+    console.error('Server failed to start:', err);
+  });
+
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception occurred:', err);
+  });
+}
