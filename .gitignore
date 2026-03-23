@@ -26,3 +26,8 @@ npm-debug.log*
 
 # Coverage
 coverage/
+.gstack/
+
+# Uploaded documents and data
+uploads/
+data/

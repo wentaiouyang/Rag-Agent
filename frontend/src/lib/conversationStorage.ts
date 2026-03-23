@@ -2,12 +2,18 @@ const STORAGE_KEY = 'rag-agent-conversations';
 
 export type Mood = 'happy' | 'thinking' | 'confused' | 'excited' | 'neutral' | 'sad';
 
+export interface Source {
+  text: string;
+  source: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   mood?: Mood;
+  sources?: Source[];
 }
 
 export interface Conversation {

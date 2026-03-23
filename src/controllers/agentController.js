@@ -3,14 +3,17 @@ const { google } = require('@ai-sdk/google');
 const { z } = require('zod');
 const { retrieveKnowledge } = require('../services/ragService');
 
-// Simple in-memory cache with TTL
+// Simple in-memory cache with TTL and size limit
 const cache = new Map();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_MAX_SIZE = 1000;
 
 function getCached(prompt) {
   const key = prompt.trim().toLowerCase();
   const entry = cache.get(key);
-  if (!entry) return null;
+  if (!entry) {
+    return null;
+  }
   if (Date.now() - entry.timestamp > CACHE_TTL) {
     cache.delete(key);
     return null;
@@ -19,8 +22,15 @@ function getCached(prompt) {
 }
 
 function setCache(prompt, data) {
+  if (cache.size >= CACHE_MAX_SIZE) {
+    cache.clear();
+  }
   const key = prompt.trim().toLowerCase();
   cache.set(key, { data, timestamp: Date.now() });
+}
+
+function clearCache() {
+  cache.clear();
 }
 
 async function chatWithAgent(req, res) {
@@ -32,12 +42,14 @@ async function chatWithAgent(req, res) {
 
     console.log(`\nUser question: "${prompt}"`);
 
-    // Check cache first to avoid unnecessary API calls
     const cached = getCached(prompt);
     if (cached) {
       console.log('Cache hit! Returning cached response.');
       return res.status(200).json(cached);
     }
+
+    // Track sources collected during tool calls
+    let collectedSources = [];
 
     const result = await generateText({
       model: google('gemini-2.5-flash'),
@@ -45,7 +57,8 @@ async function chatWithAgent(req, res) {
                Directives:
                1. You MUST use the searchCompanyDocs tool for any questions regarding project architecture, auth, or deployment.
                2. Once you receive the tool output, combine it with your knowledge to give a detailed, helpful answer.
-               3. Always respond in the same language as the user's question.`,
+               3. Always cite your sources using [source: filename] notation.
+               4. Always respond in the same language as the user's question.`,
       prompt: prompt,
       tools: {
         searchCompanyDocs: tool({
@@ -55,53 +68,47 @@ async function chatWithAgent(req, res) {
             query: z.string().optional().describe('Search query for the knowledge base'),
           }),
           execute: async (args) => {
-            // Use the provided query or fallback to the original prompt
             const searchQuery = args.query || prompt;
-            const info = await retrieveKnowledge(searchQuery);
-            return info; // This returns the string from your rawData
+            const results = await retrieveKnowledge(searchQuery);
+            collectedSources = results;
+            // Format structured results back into context string for the LLM
+            if (results.length === 0) {
+              return 'No relevant information found in the knowledge base.';
+            }
+            return results.map((r) => `[source: ${r.source}]\n${r.text}`).join('\n\n---\n\n');
           },
         }),
       },
       maxSteps: 3,
     });
 
-    // ROBUST EXTRACTION: Iterate through steps to find the actual content
     let finalAnswer = result.text;
 
+    // Fallback: if no direct text, build answer from structured tool results
     if (!finalAnswer) {
-      // Extract raw tool output directly instead of making a second API call
       console.log('No direct text response, extracting from tool results...');
-      let rawToolOutput = '';
-
-      for (const step of result.steps) {
-        if (step.content) {
-          for (const part of step.content) {
-            if (part.type === 'tool-result') {
-              rawToolOutput += (part.result || part.output) + '\n';
-            }
-          }
-        }
-      }
-
-      if (rawToolOutput) {
-        finalAnswer = rawToolOutput.trim();
+      if (collectedSources.length > 0) {
+        finalAnswer = collectedSources.map((s) => s.text).join('\n\n---\n\n');
       }
     }
 
-    // Final safety net
     if (!finalAnswer || finalAnswer === 'undefined') {
       finalAnswer =
         "Sorry, I found information in the documentation, but couldn't properly summarize it.";
     }
 
-    const response = { question: prompt, answer: finalAnswer };
+    const response = {
+      question: prompt,
+      answer: finalAnswer,
+      sources: collectedSources.map((s) => ({ text: s.text, source: s.source })),
+    };
     setCache(prompt, response);
     res.status(200).json(response);
-    console.log(`Success! Answer sent.`);
+    console.log(`Success! Answer sent with ${collectedSources.length} sources.`);
   } catch (error) {
     console.error('Agent execution error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 }
 
-module.exports = { chatWithAgent };
+module.exports = { chatWithAgent, clearCache };

@@ -15,6 +15,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   MessageSquare,
+  FileText,
 } from "lucide-react";
 import type { Conversation } from "@/lib/conversationStorage";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,9 @@ interface ChatSidebarProps {
   onSidebarOpenChange: (open: boolean) => void;
   sidebarCollapsed: boolean;
   onSidebarCollapsedChange: (collapsed: boolean) => void;
+  activeTab: "chats" | "documents";
+  onTabChange: (tab: "chats" | "documents") => void;
+  documentsContent?: React.ReactNode;
 }
 
 export function ChatSidebar({
@@ -53,6 +57,9 @@ export function ChatSidebar({
   onSidebarOpenChange,
   sidebarCollapsed,
   onSidebarCollapsedChange,
+  activeTab,
+  onTabChange,
+  documentsContent,
 }: ChatSidebarProps) {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -71,6 +78,35 @@ export function ChatSidebar({
     onSelectConversation(id);
     onSidebarOpenChange(false);
   };
+
+  const tabBar = (
+    <div className="flex border-b">
+      <button
+        className={cn(
+          "flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors",
+          activeTab === "chats"
+            ? "border-b-2 border-violet-500 text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        )}
+        onClick={() => onTabChange("chats")}
+      >
+        <MessageSquare className="h-3.5 w-3.5" />
+        Chats
+      </button>
+      <button
+        className={cn(
+          "flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors",
+          activeTab === "documents"
+            ? "border-b-2 border-violet-500 text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        )}
+        onClick={() => onTabChange("documents")}
+      >
+        <FileText className="h-3.5 w-3.5" />
+        Documents
+      </button>
+    </div>
+  );
 
   const listContent = (
     <div className="flex flex-col gap-1.5 py-3">
@@ -116,35 +152,56 @@ export function ChatSidebar({
     </div>
   );
 
+  const chatsContent = (
+    <>
+      <div className="border-b p-3">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start gap-2.5"
+          onClick={onNewChat}
+        >
+          <MessageSquarePlus className="h-4 w-4" />
+          New Chat
+        </Button>
+      </div>
+      <ScrollArea className="flex-1 px-2">{listContent}</ScrollArea>
+    </>
+  );
+
   return (
     <>
       {/* Mobile: Sheet overlay */}
       <Sheet open={sidebarOpen} onOpenChange={onSidebarOpenChange}>
         <SheetContent side="left" className="w-[280px] p-0">
-          <SheetHeader className="border-b px-4 py-3">
-            <SheetTitle className="flex items-center gap-2 text-base">
-              <MessageSquare className="h-4 w-4" />
-              Conversations
-            </SheetTitle>
+          <SheetHeader className="px-4 py-3">
+            <SheetTitle className="text-base">RAG Agent</SheetTitle>
           </SheetHeader>
-          <div className="flex flex-col">
-            <div className="border-b p-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start gap-2.5"
-                onClick={() => {
-                  onNewChat();
-                  onSidebarOpenChange(false);
-                }}
-              >
-                <MessageSquarePlus className="h-4 w-4" />
-                New Chat
-              </Button>
-            </div>
-            <ScrollArea className="h-[calc(100vh-140px)] px-2">
-              {listContent}
-            </ScrollArea>
+          {tabBar}
+          <div className="flex flex-1 flex-col">
+            {activeTab === "chats" ? (
+              <>
+                <div className="border-b p-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start gap-2.5"
+                    onClick={() => {
+                      onNewChat();
+                      onSidebarOpenChange(false);
+                    }}
+                  >
+                    <MessageSquarePlus className="h-4 w-4" />
+                    New Chat
+                  </Button>
+                </div>
+                <ScrollArea className="h-[calc(100vh-180px)] px-2">
+                  {listContent}
+                </ScrollArea>
+              </>
+            ) : (
+              documentsContent
+            )}
           </div>
         </SheetContent>
       </Sheet>
@@ -156,12 +213,14 @@ export function ChatSidebar({
           sidebarCollapsed ? "w-12" : "w-64"
         )}
       >
-        <div className={cn(
-          "flex h-14 items-center border-b",
-          sidebarCollapsed ? "justify-center px-2" : "justify-between px-4"
-        )}>
+        <div
+          className={cn(
+            "flex h-14 items-center border-b",
+            sidebarCollapsed ? "justify-center px-2" : "justify-between px-4"
+          )}
+        >
           {!sidebarCollapsed && (
-            <span className="truncate text-sm font-medium">Conversations</span>
+            <span className="truncate text-sm font-medium">RAG Agent</span>
           )}
           <Button
             variant="ghost"
@@ -179,20 +238,8 @@ export function ChatSidebar({
         </div>
         {!sidebarCollapsed && (
           <>
-            <div className="border-b p-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start gap-2.5"
-                onClick={onNewChat}
-              >
-                <MessageSquarePlus className="h-4 w-4" />
-                New Chat
-              </Button>
-            </div>
-            <ScrollArea className="flex-1 px-2">
-              {listContent}
-            </ScrollArea>
+            {tabBar}
+            {activeTab === "chats" ? chatsContent : documentsContent}
           </>
         )}
       </aside>

@@ -7,20 +7,32 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, User, Loader2, Sparkles, PanelLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   loadConversations,
   saveConversations,
   type Conversation,
   type Message,
   type Mood,
+  type Source,
 } from "@/lib/conversationStorage";
 import { ChatSidebar } from "@/components/ChatSidebar";
+import { DocumentSidebar } from "@/components/DocumentSidebar";
 import { MoodAvatar } from "@/components/MoodAvatar";
 
 const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const API_URL = (
   RAW_API_URL.startsWith("http") ? RAW_API_URL : `https://${RAW_API_URL}`
 ).replace(/\/+$/, "");
+
+interface DocumentItem {
+  documentId: string;
+  filename: string;
+  chunkCount: number;
+  createdAt: string;
+  status: string;
+}
 
 export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -29,6 +41,8 @@ export default function ChatPage() {
   >(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"chats" | "documents">("chats");
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -42,10 +56,23 @@ export default function ChatPage() {
 
   const isInitialMount = useRef(true);
 
+  const fetchDocuments = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/documents`);
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data);
+      }
+    } catch {
+      // Server might not be running yet
+    }
+  }, []);
+
   useEffect(() => {
     const loaded = loadConversations();
     setConversations(loaded);
-  }, []);
+    fetchDocuments();
+  }, [fetchDocuments]);
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -132,6 +159,7 @@ export default function ChatPage() {
           content: data.answer || "Sorry, no response received.",
           timestamp: new Date(),
           mood: (data.mood as Mood) || "neutral",
+          sources: data.sources as Source[] | undefined,
         };
 
         setConversations((prev) =>
@@ -212,6 +240,14 @@ export default function ChatPage() {
         onSidebarOpenChange={setSidebarOpen}
         sidebarCollapsed={sidebarCollapsed}
         onSidebarCollapsedChange={setSidebarCollapsed}
+        activeTab={sidebarTab}
+        onTabChange={setSidebarTab}
+        documentsContent={
+          <DocumentSidebar
+            documents={documents}
+            onDocumentsChange={fetchDocuments}
+          />
+        }
       />
 
       <div className="flex flex-1 flex-col min-w-0 min-h-0">
@@ -289,6 +325,9 @@ export default function ChatPage() {
 
 function ChatBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
+  const sources = message.sources ?? [];
+  // Deduplicate sources by filename
+  const uniqueSources = [...new Set(sources.map((s) => s.source))];
 
   return (
     <div
@@ -310,9 +349,35 @@ function ChatBubble({ message }: { message: Message }) {
             : "rounded-tl-md bg-muted/60"
         }`}
       >
-        <div className="whitespace-pre-wrap text-[13px] leading-relaxed">
-          {message.content}
-        </div>
+        {isUser ? (
+          <div className="whitespace-pre-wrap text-[13px] leading-relaxed">
+            {message.content}
+          </div>
+        ) : (
+          <div className="prose prose-sm dark:prose-invert max-w-none text-[13px] leading-relaxed [&_table]:text-[12px] [&_code]:text-[12px] [&_pre]:text-[12px] [&_p]:my-1.5 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        )}
+
+        {/* Source citations */}
+        {!isUser && uniqueSources.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {uniqueSources.map((source) => (
+              <span
+                key={source}
+                className="inline-flex items-center gap-1 rounded-md bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400"
+              >
+                <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {source}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div
           className={`mt-1.5 flex items-center gap-2 ${
             isUser ? "justify-end" : "justify-start"
