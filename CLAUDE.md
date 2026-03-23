@@ -96,4 +96,4 @@ No test suite is configured for either backend or frontend.
 
 ## Deployment
 - Frontend deploys to Vercel (root directory set to `frontend`)
-- Backend deploys to any Node.js host (Railway, Render, etc.)
+- Backend deploys to Vercel

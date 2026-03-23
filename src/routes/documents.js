@@ -48,106 +48,93 @@ async function extractText(filePath, originalName) {
     return fs.readFileSync(filePath, 'utf-8');
   }
   if (ext === '.pdf') {
-    const pdfParse = require('pdf-parse');
+    const { PDFParse, VerbosityLevel } = require('pdf-parse');
     const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdfParse(dataBuffer);
-    return data.text;
+    const parser = new PDFParse({ data: dataBuffer, verbosity: VerbosityLevel.ERRORS });
+    const { text } = await parser.getText();
+    await parser.destroy();
+    return text;
   }
   throw new Error('UNSUPPORTED_TYPE');
 }
 
 // POST /api/documents/upload
-router.post('/upload', (req, res) => {
-  upload.single('file')(req, res, async (multerErr) => {
-    if (multerErr) {
-      if (multerErr.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ error: 'File exceeds 10MB limit', code: 'FILE_TOO_LARGE' });
-      }
-      if (multerErr.message === 'UNSUPPORTED_TYPE') {
-        return res.status(400).json({
-          error: 'Only .md, .txt, and .pdf files are supported',
-          code: 'UNSUPPORTED_TYPE',
-        });
-      }
-      return res.status(500).json({ error: multerErr.message });
+router.post('/upload', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file provided' });
+  }
+
+  try {
+    const text = await extractText(req.file.path, req.file.originalname);
+
+    // Guard against empty/unreadable PDFs
+    if (!text || text.trim().length < 50) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({
+        error: 'Could not extract meaningful text from this file',
+        code: 'PARSE_FAILED',
+      });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file provided' });
+    const documentId = crypto.randomUUID();
+    const chunks = chunkText(text);
+
+    console.log(`Uploading "${req.file.originalname}": ${chunks.length} chunks`);
+
+    const embeddings = await embedInBatches(chunks);
+
+    const vectorIds = [];
+    const vectors = chunks.map((chunk, i) => {
+      const id = `${documentId}-chunk-${i}`;
+      vectorIds.push(id);
+      return {
+        id,
+        values: embeddings[i],
+        metadata: {
+          text: chunk,
+          source: req.file.originalname,
+          documentId,
+        },
+      };
+    });
+
+    // Batch upserts
+    for (let i = 0; i < vectors.length; i += UPSERT_BATCH_SIZE) {
+      const batch = vectors.slice(i, i + UPSERT_BATCH_SIZE);
+      await index.namespace('my-company-docs').upsert({ records: batch });
     }
 
-    try {
-      const text = await extractText(req.file.path, req.file.originalname);
+    await addDocument({
+      documentId,
+      filename: req.file.originalname,
+      filePath: req.file.path,
+      chunkCount: chunks.length,
+      vectorIds,
+      createdAt: new Date().toISOString(),
+      status: 'ready',
+    });
 
-      // Guard against empty/unreadable PDFs
-      if (!text || text.trim().length < 50) {
-        fs.unlinkSync(req.file.path);
-        return res.status(400).json({
-          error: 'Could not extract meaningful text from this file',
-          code: 'PARSE_FAILED',
-        });
-      }
+    clearCache();
 
-      const documentId = crypto.randomUUID();
-      const chunks = chunkText(text);
-
-      console.log(`Uploading "${req.file.originalname}": ${chunks.length} chunks`);
-
-      const embeddings = await embedInBatches(chunks);
-
-      const vectorIds = [];
-      const vectors = chunks.map((chunk, i) => {
-        const id = `${documentId}-chunk-${i}`;
-        vectorIds.push(id);
-        return {
-          id,
-          values: embeddings[i],
-          metadata: {
-            text: chunk,
-            source: req.file.originalname,
-            documentId,
-          },
-        };
-      });
-
-      // Batch upserts
-      for (let i = 0; i < vectors.length; i += UPSERT_BATCH_SIZE) {
-        const batch = vectors.slice(i, i + UPSERT_BATCH_SIZE);
-        await index.namespace('my-company-docs').upsert(batch);
-      }
-
-      await addDocument({
-        documentId,
-        filename: req.file.originalname,
-        filePath: req.file.path,
-        chunkCount: chunks.length,
-        vectorIds,
-        createdAt: new Date().toISOString(),
-        status: 'ready',
-      });
-
-      clearCache();
-
-      res.status(200).json({
-        documentId,
-        filename: req.file.originalname,
-        chunkCount: chunks.length,
-        status: 'ready',
-      });
-    } catch (error) {
-      console.error('Upload error:', error);
-      // Clean up uploaded file on failure
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      if (error.message === 'EMBEDDING_FAILED') {
-        return res
-          .status(500)
-          .json({ error: 'Embedding generation failed', code: 'EMBEDDING_FAILED' });
-      }
-      res.status(500).json({ error: 'Internal Server Error' });
+    res.status(200).json({
+      documentId,
+      filename: req.file.originalname,
+      chunkCount: chunks.length,
+      status: 'ready',
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    // Clean up uploaded file on failure
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
     }
-  });
+    if (error.message === 'EMBEDDING_FAILED') {
+      return res
+        .status(500)
+        .json({ error: 'Embedding generation failed', code: 'EMBEDDING_FAILED' });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // GET /api/documents
@@ -199,6 +186,20 @@ router.delete('/:documentId', async (req, res) => {
     console.error('Delete error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
+});
+
+// Multer error handler
+router.use((err, _req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ error: 'File exceeds 10MB limit', code: 'FILE_TOO_LARGE' });
+  }
+  if (err.message === 'UNSUPPORTED_TYPE') {
+    return res.status(400).json({
+      error: 'Only .md, .txt, and .pdf files are supported',
+      code: 'UNSUPPORTED_TYPE',
+    });
+  }
+  next(err);
 });
 
 module.exports = router;

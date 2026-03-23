@@ -69,7 +69,7 @@ async function main() {
     // Batch upserts to stay within Pinecone limits
     for (let i = 0; i < vectors.length; i += UPSERT_BATCH_SIZE) {
       const batch = vectors.slice(i, i + UPSERT_BATCH_SIZE);
-      await index.namespace('my-company-docs').upsert(batch);
+      await index.namespace('my-company-docs').upsert({ records: batch });
       console.log(`Upserted batch ${Math.floor(i / UPSERT_BATCH_SIZE) + 1}...`);
     }
 
