@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const REGISTRY_PATH = path.join(__dirname, '../../data/documents.json');
+const REGISTRY_PATH = process.env.VERCEL
+  ? '/tmp/documents.json'
+  : path.join(__dirname, '../../data/documents.json');
 
 // Promise-chain write queue to prevent concurrent write races
 let writeQueue = Promise.resolve();

@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { chatWithAgent } = require('../src/controllers/agentController');
+const documentsRouter = require('../src/routes/documents');
 
 const app = express();
 
@@ -14,9 +15,7 @@ app.get('/health', (_req, res) => {
 
 app.post('/api/chat', chatWithAgent);
 
-// Document routes are not available on Vercel (no persistent filesystem)
-app.use('/api/documents', (_req, res) => {
-  res.status(501).json({ error: 'Document upload is not available in serverless mode' });
-});
+// Document management endpoints (uses /tmp on Vercel for temp file storage)
+app.use('/api/documents', documentsRouter);
 
 module.exports = app;

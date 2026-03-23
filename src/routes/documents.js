@@ -19,8 +19,9 @@ const router = express.Router();
 const UPSERT_BATCH_SIZE = 100;
 
 // Multer config: disk storage with sanitized filenames, 10MB limit
+const uploadDir = process.env.VERCEL ? '/tmp' : path.join(__dirname, '../../uploads');
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, '../../uploads'),
+  destination: uploadDir,
   filename: (_req, file, cb) => {
     const sanitized = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
     cb(null, `${Date.now()}-${sanitized}`);
