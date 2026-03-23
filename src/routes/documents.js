@@ -49,12 +49,10 @@ async function extractText(filePath, originalName) {
     return fs.readFileSync(filePath, 'utf-8');
   }
   if (ext === '.pdf') {
-    const { PDFParse, VerbosityLevel } = require('pdf-parse');
+    const pdfParse = require('pdf-parse');
     const dataBuffer = fs.readFileSync(filePath);
-    const parser = new PDFParse({ data: dataBuffer, verbosity: VerbosityLevel.ERRORS });
-    const { text } = await parser.getText();
-    await parser.destroy();
-    return text;
+    const data = await pdfParse(dataBuffer);
+    return data.text;
   }
   throw new Error('UNSUPPORTED_TYPE');
 }
