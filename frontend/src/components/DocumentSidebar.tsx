@@ -94,10 +94,10 @@ export function DocumentSidebar({
       {/* Upload Drop Zone */}
       <div className="px-3">
         <div
-          className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors cursor-pointer ${
+          className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-5 text-center transition-all duration-200 cursor-pointer ${
             dragOver
-              ? "border-violet-500 bg-violet-500/5"
-              : "border-border/50 hover:border-border hover:bg-muted/30"
+              ? "border-violet-500 bg-violet-500/5 scale-[1.02]"
+              : "border-border/50 hover:border-violet-500/40 hover:bg-muted/30"
           }`}
           onDragOver={(e) => {
             e.preventDefault();
@@ -172,7 +172,7 @@ export function DocumentSidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100"
+                  className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                   onClick={() => handleDelete(doc.documentId)}
                   disabled={deletingId === doc.documentId}
                 >

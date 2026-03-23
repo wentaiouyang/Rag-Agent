@@ -80,7 +80,7 @@ export function ChatSidebar({
   };
 
   const tabBar = (
-    <div className="flex border-b">
+    <div className="flex shrink-0 border-b">
       <button
         className={cn(
           "flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors",
@@ -119,8 +119,8 @@ export function ChatSidebar({
           <div
             key={conv.id}
             className={cn(
-              "group flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3.5 py-3 text-left transition-colors hover:bg-accent",
-              activeConversationId === conv.id && "bg-accent"
+              "group flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3.5 py-3 text-left transition-all duration-200 hover:bg-accent hover:translate-x-0.5",
+              activeConversationId === conv.id && "bg-accent border-l-2 border-violet-500"
             )}
             onClick={() => handleSelect(conv.id)}
           >
@@ -135,7 +135,7 @@ export function ChatSidebar({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100"
+              className="h-7 w-7 shrink-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
               onClick={(e) => handleDelete(conv.id, e)}
               title={deleteConfirmId === conv.id ? "Click again to confirm" : "Delete"}
             >
@@ -154,7 +154,7 @@ export function ChatSidebar({
 
   const chatsContent = (
     <>
-      <div className="border-b p-3">
+      <div className="shrink-0 border-b p-3">
         <Button
           variant="outline"
           size="sm"
@@ -165,7 +165,7 @@ export function ChatSidebar({
           New Chat
         </Button>
       </div>
-      <ScrollArea className="flex-1 px-2">{listContent}</ScrollArea>
+      <ScrollArea className="min-h-0 flex-1 px-2">{listContent}</ScrollArea>
     </>
   );
 
@@ -173,15 +173,15 @@ export function ChatSidebar({
     <>
       {/* Mobile: Sheet overlay */}
       <Sheet open={sidebarOpen} onOpenChange={onSidebarOpenChange}>
-        <SheetContent side="left" className="w-[280px] p-0">
-          <SheetHeader className="px-4 py-3">
+        <SheetContent side="left" className="flex w-[320px] flex-col overflow-hidden p-0">
+          <SheetHeader className="shrink-0 px-4 py-3">
             <SheetTitle className="text-base">RAG Agent</SheetTitle>
           </SheetHeader>
           {tabBar}
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col">
             {activeTab === "chats" ? (
               <>
-                <div className="border-b p-3">
+                <div className="shrink-0 border-b p-3">
                   <Button
                     variant="outline"
                     size="sm"
@@ -195,7 +195,7 @@ export function ChatSidebar({
                     New Chat
                   </Button>
                 </div>
-                <ScrollArea className="h-[calc(100vh-180px)] px-2">
+                <ScrollArea className="min-h-0 flex-1 px-2">
                   {listContent}
                 </ScrollArea>
               </>
@@ -209,13 +209,13 @@ export function ChatSidebar({
       {/* Desktop: Persistent sidebar */}
       <aside
         className={cn(
-          "hidden shrink-0 border-r border-border/40 bg-card/50 backdrop-blur-sm transition-all duration-200 md:flex md:flex-col",
-          sidebarCollapsed ? "w-12" : "w-64"
+          "hidden shrink-0 border-r border-border/40 bg-card/50 backdrop-blur-sm transition-all duration-200 md:flex md:flex-col h-screen overflow-hidden",
+          sidebarCollapsed ? "w-12" : "w-80"
         )}
       >
         <div
           className={cn(
-            "flex h-14 items-center border-b",
+            "flex h-14 shrink-0 items-center border-b",
             sidebarCollapsed ? "justify-center px-2" : "justify-between px-4"
           )}
         >
@@ -237,10 +237,10 @@ export function ChatSidebar({
           </Button>
         </div>
         {!sidebarCollapsed && (
-          <>
+          <div className="flex min-h-0 flex-1 flex-col">
             {tabBar}
             {activeTab === "chats" ? chatsContent : documentsContent}
-          </>
+          </div>
         )}
       </aside>
     </>

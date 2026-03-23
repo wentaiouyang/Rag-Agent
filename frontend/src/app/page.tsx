@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, User, Loader2, Sparkles, PanelLeft } from "lucide-react";
+import { Send, User, Loader2, Sparkles, PanelLeft, Code2, ShieldCheck, Rocket, Globe } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -301,7 +301,7 @@ export default function ChatPage() {
                 onKeyDown={handleKeyDown}
                 placeholder="Ask anything..."
                 disabled={isLoading}
-                className="rounded-xl border-border/40 bg-muted/40 pr-12 shadow-sm backdrop-blur-sm placeholder:text-muted-foreground/50 focus-visible:bg-background"
+                className="rounded-xl border-border/40 bg-muted/40 pr-12 shadow-sm backdrop-blur-sm placeholder:text-muted-foreground/50 focus-visible:bg-background focus-visible:border-violet-500/50 focus-visible:shadow-[0_0_0_3px_rgba(139,92,246,0.1)] transition-all duration-200"
               />
               <Button
                 onClick={() => sendMessage()}
@@ -331,7 +331,7 @@ function ChatBubble({ message }: { message: Message }) {
 
   return (
     <div
-      className={`group flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+      className={`group flex items-start gap-3 animate-in fade-in duration-300 ${isUser ? "flex-row-reverse slide-in-from-right-2" : "flex-row slide-in-from-left-2"}`}
     >
       {isUser ? (
         <Avatar className="mt-0.5 h-7 w-7 shrink-0">
@@ -406,12 +406,20 @@ function ChatBubble({ message }: { message: Message }) {
 
 function ThinkingIndicator() {
   return (
-    <div className="flex items-start gap-3">
-      <MoodAvatar mood="thinking" size={28} className="mt-0.5 animate-pulse" />
-      <div className="rounded-2xl rounded-tl-md bg-muted/60 px-4 py-2.5">
-        <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span>Thinking...</span>
+    <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
+      <MoodAvatar mood="thinking" size={28} className="mt-0.5" />
+      <div className="rounded-2xl rounded-tl-md bg-muted/60 px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="h-1.5 w-1.5 rounded-full bg-violet-500/70"
+              style={{
+                animation: "thinking-bounce 1.4s ease-in-out infinite",
+                animationDelay: `${i * 0.16}s`,
+              }}
+            />
+          ))}
         </div>
       </div>
     </div>
@@ -419,10 +427,10 @@ function ThinkingIndicator() {
 }
 
 const suggestions = [
-  { icon: "🔧", text: "What frontend framework do we use?", label: "Stack" },
-  { icon: "🔐", text: "How does API authentication work?", label: "Auth" },
-  { icon: "🚀", text: "Describe the deployment process", label: "Deploy" },
-  { icon: "🌐", text: "How to fix CORS issues?", label: "Debug" },
+  { icon: Code2, text: "What frontend framework do we use?", label: "Stack" },
+  { icon: ShieldCheck, text: "How does API authentication work?", label: "Auth" },
+  { icon: Rocket, text: "Describe the deployment process", label: "Deploy" },
+  { icon: Globe, text: "How to fix CORS issues?", label: "Debug" },
 ];
 
 function EmptyState({
@@ -431,7 +439,7 @@ function EmptyState({
   onSuggestionSend: (text: string) => void;
 }) {
   return (
-    <div className="flex h-[60vh] flex-col items-center justify-center text-center">
+    <div className="flex h-[60vh] flex-col items-center justify-center text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
       <MoodAvatar mood="happy" size={44} className="mb-4" />
       <h2 className="text-lg font-semibold tracking-tight">
         What can I help you find?
@@ -440,13 +448,14 @@ function EmptyState({
         Ask about architecture, API specs, deployment, and more.
       </p>
       <div className="mt-8 grid w-full max-w-md gap-2.5 sm:grid-cols-2">
-        {suggestions.map((s) => (
+        {suggestions.map((s, i) => (
           <button
             key={s.text}
-            className="group flex items-start gap-3 rounded-2xl border border-border/40 bg-muted/30 px-4 py-3 text-left transition-all duration-200 hover:border-border hover:bg-muted/60 hover:shadow-sm"
+            className="group flex items-start gap-3 rounded-2xl border border-border/40 bg-muted/30 px-4 py-3 text-left transition-all duration-200 hover:border-violet-500/40 hover:bg-muted/60 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] animate-in fade-in slide-in-from-bottom-2"
+            style={{ animationDelay: `${i * 75}ms`, animationFillMode: "both" }}
             onClick={() => onSuggestionSend(s.text)}
           >
-            <span className="mt-0.5 text-sm leading-none">{s.icon}</span>
+            <s.icon className="mt-0.5 h-4 w-4 shrink-0 text-violet-500/70 transition-colors group-hover:text-violet-500" />
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-medium leading-snug">{s.text}</p>
               <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/50">
