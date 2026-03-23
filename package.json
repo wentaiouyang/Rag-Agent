@@ -4,14 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\"",
-	"ingest": "node src/scripts/ingest.js"
+    "ingest": "node src/scripts/ingest.js"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +35,7 @@
     "eslint-plugin-prettier": "^5.5.5",
     "globals": "^17.3.0",
     "nodemon": "^3.1.11",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "vitest": "^4.1.0"
   }
 }
